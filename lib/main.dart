@@ -8,16 +8,13 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // Intentamos cargar el archivo .env
-    await dotenv.load(fileName: ".env");
-
-    // Inicializamos Supabase
+    // Inicializamos Supabase directamente con tus credenciales de producción
     await Supabase.initialize(
-      url: dotenv.env['SUPABASE_URL'] ?? '',
-      anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
+      url: 'https://hagqqtigamcglgdeszaj.supabase.co',
+      anonKey: 'sb_publishable__6UQ5OJMtttyaiw-Q9oE0A_tO2OhrLE',
     );
   } catch (e) {
-    debugPrint("Error al inicializar servicios: $e");
+    debugPrint("Error al inicializar Supabase: $e");
   }
 
   runApp(const MiFinanzasApp());
