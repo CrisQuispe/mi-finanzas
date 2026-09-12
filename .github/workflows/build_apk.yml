@@ -33,11 +33,11 @@ jobs:
       - name: Instalar dependencias del proyecto
         run: flutter pub get
 
-      - name: Compilar APK en modo Debug
+      - name: Compilar APK en modo Release
         run: flutter build apk --release
 
       - name: Subir el APK generado como artefacto descargable
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
