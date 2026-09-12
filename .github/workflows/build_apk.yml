@@ -34,7 +34,7 @@ jobs:
         run: flutter pub get
 
       - name: Compilar APK en modo Debug
-        run: flutter build apk --debug
+        run: flutter build apk --release
 
       - name: Subir el APK generado como artefacto descargable
         uses: actions/upload-artifact@v4
