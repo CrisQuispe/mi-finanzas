@@ -1,4 +1,4 @@
-package com.example.mi_finanzas // OJO: MANTÉN TU PACKAGE ORIGINAL SI ERA DISTINTO
+package com.example.mi_finanzas
 
 import io.flutter.embedding.android.FlutterActivity
 

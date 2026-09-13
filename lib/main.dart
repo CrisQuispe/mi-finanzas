@@ -7,15 +7,35 @@ import 'features/auth/login_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  await dotenv.load(fileName: ".env");
+  try {
+    await dotenv.load(fileName: ".env");
 
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL'] ?? '',
-    anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
-  );
+    await Supabase.initialize(
+      url: dotenv.env['SUPABASE_URL'] ?? '',
+      anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
+    );
 
-  runApp(const MyApp());
+    runApp(const MyApp());
+  } catch (e) {
+    // Si falla cargar el .env o Supabase, forza a Flutter a mostrar el error en pantalla
+    runApp(MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Text(
+              'Error crítico al iniciar:\n$e\n\nRevisa tu pubspec.yaml y tu archivo .env', 
+              style: const TextStyle(color: Colors.red, fontSize: 16)
+            ),
+          ),
+        ),
+      ),
+    ));
+  }
 }
+
+// ... Mantén el resto de tu código (MyApp y AuthGate) exactamente igual hacia abajo ...
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
