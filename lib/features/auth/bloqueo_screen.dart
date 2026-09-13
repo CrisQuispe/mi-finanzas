@@ -33,10 +33,6 @@ class _BloqueoScreenState extends State<BloqueoScreen> {
 
       final bool autenticado = await auth.authenticate(
         localizedReason: 'Usa tu huella para acceder a tus finanzas',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: false,
-        ),
       );
 
       if (autenticado && mounted) {
