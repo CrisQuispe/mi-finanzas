@@ -13,15 +13,6 @@ class _BloqueoScreenState extends State<BloqueoScreen> {
   final LocalAuthentication auth = LocalAuthentication();
   bool _autenticando = false;
 
-  @override
-  void initState() {
-    super.initState();
-    // Esperamos un momento a que el frame gráfico termine de pintar antes de llamar al sensor
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _autenticar();
-    });
-  }
-
   Future<void> _autenticar() async {
     if (_autenticando) return;
     setState(() => _autenticando = true);
@@ -41,7 +32,11 @@ class _BloqueoScreenState extends State<BloqueoScreen> {
       }
 
       final bool autenticado = await auth.authenticate(
-        localizedReason: 'Autentícate para acceder a tus finanzas',
+        localizedReason: 'Usa tu huella para acceder a tus finanzas',
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: false,
+        ),
       );
 
       if (autenticado && mounted) {
@@ -77,7 +72,7 @@ class _BloqueoScreenState extends State<BloqueoScreen> {
               ),
               const SizedBox(height: 10),
               const Text(
-                'Usa tu huella digital para continuar',
+                'Presiona el botón para autenticarte con tu huella digital',
                 style: TextStyle(color: Colors.white70, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
