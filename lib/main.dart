@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'features/home/home_screen.dart';
 import 'features/auth/login_screen.dart';
-import 'features/auth/bloqueo_screen.dart'; // <-- ASEGÚRATE DE TENER ESTA LÍNEA
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,8 +53,7 @@ class AuthGate extends StatelessWidget {
 
           final session = snapshot.hasData ? snapshot.data!.session : null;
           if (session != null) {
-            // <-- 2. CAMBIAMOS HomeScreen() POR BloqueoScreen()
-            return BloqueoScreen(); 
+            return const HomeScreen(); // <-- Directo y estable al inicio
           }
 
           return const LoginScreen();
