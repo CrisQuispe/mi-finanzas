@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 import '../../models/cuenta.dart';
 
 class ExpenseScreen extends StatefulWidget {
@@ -13,14 +14,25 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   final _supabase = Supabase.instance.client;
   final _montoController = TextEditingController();
   final _descripcionController = TextEditingController();
+  
+  DateTime _fechaSeleccionada = DateTime.now(); 
 
   String _categoriaSeleccionada = 'Transporte';
-  // Categorías personalizadas solicitadas
-  final List<String> _categorias = [
-    'Transporte', 'Menú', 'Universidad', 'Golosina', 'Agua', 
-    'Deporte', 'Spotify', 'Internet Claro', 'Internet casa', 
-    'Suscripción', 'Otro'
-  ];
+  
+  // Mapa de categorías con "Snack" actualizado y sus respectivos íconos
+  final Map<String, IconData> _categorias = {
+    'Transporte': Icons.directions_bus,
+    'Menú': Icons.restaurant,
+    'Universidad': Icons.school,
+    'Snack': Icons.cookie, 
+    'Agua': Icons.water_drop,
+    'Deporte': Icons.fitness_center,
+    'Spotify': Icons.headphones,
+    'Internet Claro': Icons.cell_tower,
+    'Internet casa': Icons.router,
+    'Suscripción': Icons.subscriptions,
+    'Otro': Icons.more_horiz,
+  };
 
   List<Cuenta> _cuentasTotales = [];
   String _tipoCuentaSeleccionado = 'banco';
@@ -53,6 +65,18 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     });
   }
 
+  Future<void> _seleccionarFecha(BuildContext context) async {
+    final seleccion = await showDatePicker(
+      context: context,
+      initialDate: _fechaSeleccionada,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (seleccion != null) {
+      setState(() => _fechaSeleccionada = seleccion);
+    }
+  }
+
   Future<void> _guardarGasto() async {
     if (_montoController.text.isEmpty || _cuentaOrigen == null) return;
     final monto = double.tryParse(_montoController.text) ?? 0.0;
@@ -62,16 +86,18 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       await _supabase.from('movimientos').insert({
         'user_id': _supabase.auth.currentUser!.id,
         'cuenta_id': _cuentaOrigen!.id,
-        'tipo': 'gasto', // Se marca como salida de dinero
+        'tipo': 'gasto',
         'categoria': _categoriaSeleccionada,
         'descripcion': _descripcionController.text.trim(),
         'monto': monto,
+        'fecha': DateFormat('yyyy-MM-dd').format(_fechaSeleccionada), 
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gasto registrado'), backgroundColor: Colors.red));
         _montoController.clear();
         _descripcionController.clear();
+        setState(() => _fechaSeleccionada = DateTime.now()); 
         FocusScope.of(context).unfocus();
       }
     } catch (e) {
@@ -105,6 +131,17 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
             ),
             const SizedBox(height: 16),
             TextField(
+              readOnly: true,
+              controller: TextEditingController(text: DateFormat('dd/MM/yyyy').format(_fechaSeleccionada)),
+              decoration: const InputDecoration(
+                labelText: 'Fecha del gasto', 
+                border: OutlineInputBorder(), 
+                prefixIcon: Icon(Icons.calendar_today, color: Colors.red)
+              ),
+              onTap: () => _seleccionarFecha(context),
+            ),
+            const SizedBox(height: 16),
+            TextField(
               controller: _descripcionController,
               decoration: const InputDecoration(labelText: 'Descripción', border: OutlineInputBorder(), prefixIcon: Icon(Icons.description, color: Colors.red)),
             ),
@@ -112,7 +149,16 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
             DropdownButtonFormField<String>(
               value: _categoriaSeleccionada,
               decoration: const InputDecoration(labelText: 'Categoría', border: OutlineInputBorder(), prefixIcon: Icon(Icons.shopping_cart, color: Colors.red)),
-              items: _categorias.map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
+              items: _categorias.entries.map((entry) => DropdownMenuItem(
+                value: entry.key, 
+                child: Row(
+                  children: [
+                    Icon(entry.value, color: Colors.red, size: 20),
+                    const SizedBox(width: 10),
+                    Text(entry.key),
+                  ],
+                )
+              )).toList(),
               onChanged: (val) => setState(() => _categoriaSeleccionada = val!),
             ),
             const SizedBox(height: 16),

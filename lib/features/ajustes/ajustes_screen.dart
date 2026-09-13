@@ -1,4 +1,3 @@
-// Archivo: lib/features/ajustes/ajustes_screen.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/cuenta.dart';
@@ -15,6 +14,13 @@ class _AjustesScreenState extends State<AjustesScreen> {
   List<Cuenta> _cuentas = [];
   bool _isLoading = true;
 
+  // Mapa que define qué opciones mostrar según el tipo elegido
+  final Map<String, List<String>> _opcionesPorTipo = {
+    'banco': ['BCP', 'Banco de la Nación'],
+    'billetera': ['Yape', 'Plin'],
+    'efectivo': ['Efectivo'],
+  };
+
   @override
   void initState() {
     super.initState();
@@ -22,6 +28,7 @@ class _AjustesScreenState extends State<AjustesScreen> {
   }
 
   Future<void> _cargarCuentas() async {
+    setState(() => _isLoading = true);
     try {
       final response = await _supabase.from('cuentas').select().order('created_at');
       setState(() {
@@ -30,14 +37,111 @@ class _AjustesScreenState extends State<AjustesScreen> {
       });
     } catch (e) {
       debugPrint('Error al cargar cuentas: $e');
+      setState(() => _isLoading = false);
     }
   }
 
+  Future<void> _eliminarCuenta(Cuenta cuenta) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar Cuenta'),
+        content: Text('¿Estás seguro de que deseas eliminar "${cuenta.nombre}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), 
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    try {
+      await _supabase.from('cuentas').delete().eq('id', cuenta.id!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cuenta eliminada'), backgroundColor: Colors.red));
+        _cargarCuentas();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No se puede eliminar: Ya tiene movimientos registrados.'), 
+          backgroundColor: Colors.redAccent,
+        ));
+      }
+    }
+  }
+
+  // NUEVA FUNCIÓN: Editar el Saldo Inicial
+  Future<void> _editarSaldo(Cuenta cuenta) async {
+    final saldoController = TextEditingController(text: cuenta.saldoInicial.toString());
+    
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Editar Saldo - ${cuenta.nombre}'),
+        content: TextField(
+          controller: saldoController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(labelText: 'Nuevo Saldo Inicial (S/)', border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true), 
+            child: const Text('Actualizar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+    
+    final nuevoSaldo = double.tryParse(saldoController.text) ?? cuenta.saldoInicial;
+
+    try {
+      await _supabase.from('cuentas').update({'saldo_inicial': nuevoSaldo}).eq('id', cuenta.id!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saldo actualizado'), backgroundColor: Colors.green));
+        _cargarCuentas();
+      }
+    } catch (e) {
+      debugPrint('Error al actualizar saldo: $e');
+    }
+  }
+
+  // NUEVA FUNCIÓN: Lee las imágenes locales descargadas en el Paso 1
+  Widget _obtenerLogoImagen(String nombre) {
+    String rutaImagen = '';
+    
+    if (nombre == 'Yape') rutaImagen = 'assets/logos/yape.png';
+    else if (nombre == 'Plin') rutaImagen = 'assets/logos/plin.png';
+    else if (nombre == 'BCP') rutaImagen = 'assets/logos/bcp.png';
+    else if (nombre == 'Banco de la Nación') rutaImagen = 'assets/logos/nacion.png';
+    else if (nombre == 'Efectivo') rutaImagen = 'assets/logos/efectivo.png';
+
+    if (rutaImagen.isNotEmpty) {
+      return Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          image: DecorationImage(image: AssetImage(rutaImagen), fit: BoxFit.cover),
+          color: Colors.white, // Fondo blanco por si el logo tiene transparencias
+        ),
+      );
+    }
+    // Respaldo en caso de que falte alguna imagen
+    return CircleAvatar(backgroundColor: Colors.grey.shade300, child: const Icon(Icons.account_balance_wallet, color: Colors.black54));
+  }
+
   void _mostrarDialogoNuevaCuenta() {
-    final nombreController = TextEditingController();
-    final saldoController = TextEditingController();
     String tipoSeleccionado = 'banco';
-    String nombreSugerido = 'BCP';
+    String entidadSeleccionada = _opcionesPorTipo['banco']!.first; // Selecciona BCP por defecto
+    final saldoController = TextEditingController();
 
     showDialog(
       context: context,
@@ -45,14 +149,15 @@ class _AjustesScreenState extends State<AjustesScreen> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('Registrar Cuenta / Saldo Inicial'),
+              title: const Text('Nueva Cuenta'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // SELECTOR 1: TIPO DE CUENTA
                     DropdownButtonFormField<String>(
                       value: tipoSeleccionado,
-                      decoration: const InputDecoration(labelText: 'Tipo de cuenta'),
+                      decoration: const InputDecoration(labelText: 'Tipo de Cuenta'),
                       items: const [
                         DropdownMenuItem(value: 'banco', child: Text('Cuenta Bancaria')),
                         DropdownMenuItem(value: 'billetera', child: Text('Billetera Digital')),
@@ -61,125 +166,129 @@ class _AjustesScreenState extends State<AjustesScreen> {
                       onChanged: (val) {
                         setStateDialog(() {
                           tipoSeleccionado = val!;
-                          if (val == 'banco') nombreSugerido = 'BCP';
-                          if (val == 'billetera') nombreSugerido = 'Yape';
-                          if (val == 'efectivo') nombreSugerido = 'Efectivo';
+                          // Al cambiar el tipo, se actualiza automáticamente la entidad a la primera opción de la nueva lista
+                          entidadSeleccionada = _opcionesPorTipo[tipoSeleccionado]!.first;
                         });
                       },
                     ),
-                    const SizedBox(height: 10),
-                    if (tipoSeleccionado == 'banco')
-                      DropdownButtonFormField<String>(
-                        value: nombreSugerido,
-                        decoration: const InputDecoration(labelText: 'Banco'),
-                        items: const [
-                          DropdownMenuItem(value: 'BCP', child: Text('BCP')),
-                          DropdownMenuItem(value: 'Banco de la Nación', child: Text('Banco de la Nación')),
-                          DropdownMenuItem(value: 'Otro', child: Text('Otro')),
-                        ],
-                        onChanged: (val) => setStateDialog(() => nombreSugerido = val!),
-                      ),
-                    if (tipoSeleccionado == 'billetera')
-                      DropdownButtonFormField<String>(
-                        value: nombreSugerido,
-                        decoration: const InputDecoration(labelText: 'Billetera'),
-                        items: const [
-                          DropdownMenuItem(value: 'Yape', child: Text('Yape')),
-                          DropdownMenuItem(value: 'Plin', child: Text('Plin')),
-                          DropdownMenuItem(value: 'Agora', child: Text('Agora')),
-                          DropdownMenuItem(value: 'Otro', child: Text('Otro')),
-                        ],
-                        onChanged: (val) => setStateDialog(() => nombreSugerido = val!),
-                      ),
-                    if (nombreSugerido == 'Otro')
-                      Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: TextField(
-                          controller: nombreController,
-                          decoration: const InputDecoration(labelText: 'Escribe el nombre'),
-                        ),
-                      ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 16),
+                    // SELECTOR 2: ENTIDAD (Depende del primero)
+                    DropdownButtonFormField<String>(
+                      value: entidadSeleccionada,
+                      decoration: const InputDecoration(labelText: 'Entidad / Banco'),
+                      items: _opcionesPorTipo[tipoSeleccionado]!.map((entidad) => DropdownMenuItem(
+                        value: entidad, 
+                        child: Text(entidad)
+                      )).toList(),
+                      onChanged: (val) => setStateDialog(() => entidadSeleccionada = val!),
+                    ),
+                    const SizedBox(height: 16),
                     TextField(
                       controller: saldoController,
-                      decoration: const InputDecoration(labelText: 'Saldo Inicial (S/)'),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(labelText: 'Saldo Inicial (S/)'),
                     ),
                   ],
                 ),
               ),
               actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar'),
-                ),
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                   onPressed: () async {
-                    final nombreFinal = nombreSugerido == 'Otro' ? nombreController.text : nombreSugerido;
                     final saldo = double.tryParse(saldoController.text) ?? 0.0;
-                    
-                    final nuevaCuenta = Cuenta(
-                      nombre: nombreFinal,
-                      tipo: tipoSeleccionado,
-                      saldoInicial: saldo,
-                    );
 
-                    await _supabase.from('cuentas').insert(nuevaCuenta.toJson());
+                    await _supabase.from('cuentas').insert({
+                      'user_id': _supabase.auth.currentUser!.id,
+                      'nombre': entidadSeleccionada, // Guarda el nombre elegido de la lista
+                      'tipo': tipoSeleccionado,
+                      'saldo_inicial': saldo,
+                    });
+
                     if (context.mounted) Navigator.pop(context);
-                    _cargarCuentas(); // Recarga la lista
+                    _cargarCuentas();
                   },
                   child: const Text('Guardar'),
                 ),
               ],
             );
-          },
+          }
         );
-      },
+      }
     );
+  }
+
+  Future<void> _cerrarSesion() async {
+    await _supabase.auth.signOut();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mis Cuentas y Saldos'),
-        backgroundColor: Colors.green.shade100,
+        title: const Text('Mis Cuentas', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(icon: const Icon(Icons.logout, color: Colors.red), onPressed: _cerrarSesion),
+        ],
       ),
-      body: _isLoading 
-          ? const Center(child: CircularProgressIndicator())
-          : _cuentas.isEmpty
-              ? const Center(child: Text('No has registrado ninguna cuenta aún.'))
-              : ListView.builder(
-                  itemCount: _cuentas.length,
-                  itemBuilder: (context, index) {
-                    final c = _cuentas[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.green.shade50,
-                          child: Icon(
-                            c.tipo == 'banco' ? Icons.account_balance : 
-                            c.tipo == 'billetera' ? Icons.phone_android : Icons.attach_money,
-                            color: Colors.green,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.green))
+          : Column(
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(top: 10),
+                    itemCount: _cuentas.length,
+                    itemBuilder: (context, index) {
+                      final c = _cuentas[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: ListTile(
+                          leading: _obtenerLogoImagen(c.nombre), // Muestra tu imagen local
+                          title: Text(c.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('Saldo inicial: S/ ${c.saldoInicial.toStringAsFixed(2)}\nTipo: ${c.tipo.toUpperCase()}'),
+                          isThreeLine: true,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Botón de Editar Saldo
+                              IconButton(
+                                icon: const Icon(Icons.edit, color: Colors.blue),
+                                onPressed: () => _editarSaldo(c),
+                              ),
+                              // Botón de Eliminar
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                onPressed: () => _eliminarCuenta(c),
+                              ),
+                            ],
                           ),
                         ),
-                        title: Text(c.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(c.tipo.toUpperCase()),
-                        trailing: Text('S/ ${c.saldoInicial.toStringAsFixed(2)}', 
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _mostrarDialogoNuevaCuenta,
-        icon: const Icon(Icons.add),
-        label: const Text('Nueva Cuenta'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-      ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green, 
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                      ),
+                      onPressed: _mostrarDialogoNuevaCuenta,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Agregar Nueva Cuenta', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }

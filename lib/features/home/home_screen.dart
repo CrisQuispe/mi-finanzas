@@ -15,13 +15,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _indiceSeleccionado = 0;
 
-  // El orden exacto de los botones en la barra inferior
+  // Nuevo orden exacto de las pantallas
   final List<Widget> _pantallas = [
     const DashboardScreen(),     // 0: Resumen
-    const IncomeScreen(),        // 1: Ingresos
-    const ExpenseScreen(),       // 2: Gastos
-    const AjustesScreen(),       // 3: Ajustes
-    const MovimientosScreen(),   // 4: Historial
+    const MovimientosScreen(),   // 1: Movimientos
+    const IncomeScreen(),        // 2: Ingresos
+    const ExpenseScreen(),       // 3: Gastos
+    const AjustesScreen(),       // 4: Ajustes
   ];
 
   void _alTocarOpcion(int index) {
@@ -44,10 +44,10 @@ class _HomeScreenState extends State<HomeScreen> {
         onDestinationSelected: _alTocarOpcion,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Resumen'),
+          NavigationDestination(icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'Movimientos'),
           NavigationDestination(icon: Icon(Icons.arrow_upward_outlined), selectedIcon: Icon(Icons.arrow_upward), label: 'Ingresos'),
           NavigationDestination(icon: Icon(Icons.arrow_downward_outlined), selectedIcon: Icon(Icons.arrow_downward), label: 'Gastos'),
           NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Ajustes'),
-          NavigationDestination(icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'Historial'),
         ],
       ),
     );
